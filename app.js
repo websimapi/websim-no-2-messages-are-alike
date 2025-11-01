@@ -5,7 +5,6 @@ let lastMessageTime = 0;
 let currentChatroom = 'main';
 let currentUser = null;
 let userRecord = null;
-let isCreatingRecord = false;
 
 async function initialize() {
   await room.initialize();
@@ -14,7 +13,7 @@ async function initialize() {
   currentUser = await window.websim.getCurrentUser();
   
   // Get or create user record
-  await getOrCreateUserRecord();
+  userRecord = await getOrCreateUserRecord();
 
   // Subscribe to all user records for real-time updates
   room.collection('user_messages').subscribe((records) => {
@@ -48,54 +47,68 @@ async function initialize() {
 }
 
 async function getOrCreateUserRecord() {
-  if (isCreatingRecord) {
-    console.log('Record creation already in progress. Waiting...');
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    return getOrCreateUserRecord();
-  }
+  return new Promise((resolve) => {
+    const userMessages = room.collection('user_messages').filter({ user_id: currentUser.id });
+    let resolved = false;
 
-  isCreatingRecord = true;
+    const processRecords = async (records) => {
+      if (resolved) return;
 
-  try {
-    let existingRecords = room.collection('user_messages').filter({ user_id: currentUser.id }).getList();
-    let attempts = 0;
-    while(existingRecords.length === 0 && attempts < 5) {
-        await new Promise(resolve => setTimeout(resolve, 500));
-        existingRecords = room.collection('user_messages').filter({ user_id: currentUser.id }).getList();
-        attempts++;
-    }
+      if (records.length > 0) {
+        resolved = true;
+        unsubscribe();
+        
+        let recordToUse;
+        if (records.length > 1) {
+          console.log(`Found ${records.length} records, merging...`);
+          recordToUse = await mergeUserRecords(records);
+        } else {
+          recordToUse = records[0];
+        }
 
-    if (existingRecords.length > 0) {
-      if (existingRecords.length > 1) {
-        userRecord = await mergeUserRecords(existingRecords);
-      } else {
-        userRecord = existingRecords[0];
+        if (!Array.isArray(recordToUse.messages)) {
+          await room.collection('user_messages').update(recordToUse.id, { messages: [] });
+          recordToUse.messages = [];
+        }
+        resolve(recordToUse);
       }
+    };
+
+    const unsubscribe = userMessages.subscribe(processRecords);
+
+    // After a short delay, if we still have no records, try to create one.
+    // This handles the initial creation case.
+    setTimeout(async () => {
+      if (resolved) return;
       
-      if (!Array.isArray(userRecord.messages)) {
-        await room.collection('user_messages').update(userRecord.id, { messages: [] });
-        userRecord.messages = [];
+      const currentRecords = userMessages.getList();
+      if (currentRecords.length === 0) {
+        // We are likely the first, let's create a record.
+        try {
+          const newRecord = await room.collection('user_messages').create({
+            user_id: currentUser.id,
+            user_username: currentUser.username,
+            messages: []
+          });
+          // The subscription will fire with the new record, and processRecords will handle it.
+        } catch (e) {
+            console.error("Error creating record, another client might have created it.", e);
+            // Another client might have created it just now. The subscription should still resolve us.
+        }
+      } else {
+        // Records appeared while we were waiting.
+        processRecords(currentRecords);
       }
-    } else {
-      // Create new record for user if none exists
-      userRecord = await room.collection('user_messages').create({
-        user_id: currentUser.id,
-        user_username: currentUser.username,
-        messages: []
-      });
-    }
-  } catch (error) {
-      console.error("Error getting or creating user record:", error);
-  } finally {
-      isCreatingRecord = false;
-  }
+    }, 2000); // Wait 2s for initial data
+  });
 }
 
 async function mergeUserRecords(records) {
     console.log(`Merging ${records.length} records for user ${currentUser.username}`);
-    // Keep the oldest record (last in the list from getList)
-    const primary = records[records.length - 1];
-    const duplicates = records.slice(0, records.length - 1);
+    // Sort by creation date to find the original record
+    records.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    const primary = records[0];
+    const duplicates = records.slice(1);
 
     const mergedMessages = [
       ...(Array.isArray(primary.messages) ? primary.messages : []),
