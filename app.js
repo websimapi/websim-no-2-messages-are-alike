@@ -15,6 +15,13 @@ async function initialize() {
   // Get or create user record
   userRecord = await getOrCreateUserRecord();
 
+  // Enable the form now that user data is ready
+  const messageInput = document.getElementById('messageInput');
+  const sendButton = document.querySelector('#messageForm button');
+  messageInput.disabled = false;
+  sendButton.disabled = false;
+  messageInput.placeholder = 'Type a unique message (max 200 chars)';
+
   // Subscribe to all user records for real-time updates
   room.collection('user_messages').subscribe((records) => {
     renderMessagesFromRecords(records);
