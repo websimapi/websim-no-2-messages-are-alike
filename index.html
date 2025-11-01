@@ -1,0 +1,257 @@
+<html>
+<head>
+  <title>No 2 Messages Are Alike</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #1a1a1a;
+      color: #e0e0e0;
+    }
+    h1 {
+      color: #3498db;
+      text-align: center;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #3498db;
+      padding-bottom: 10px;
+    }
+    
+    .container {
+      display: flex;
+      gap: 20px;
+    }
+    
+    .chatroom-list {
+      width: 250px;
+      background-color: #2a2a2a;
+      border-radius: 8px;
+      padding: 15px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    }
+    
+    .main-content {
+      flex: 1;
+    }
+    
+    .room-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    
+    #currentRoom {
+      font-size: 18px;
+      font-weight: bold;
+      color: #3498db;
+    }
+    
+    .chatroom {
+      padding: 10px;
+      margin-bottom: 8px;
+      background-color: #333;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      display: flex;
+      justify-content: space-between;
+    }
+    
+    .chatroom:hover {
+      background-color: #444;
+    }
+    
+    .chatroom.active {
+      background-color: #3498db;
+      color: white;
+    }
+    
+    .chatroom .expiry-time {
+      font-size: 0.8em;
+      color: #f39c12;
+    }
+    
+    .chatroom.active .expiry-time {
+      color: rgba(255,255,255,0.8);
+    }
+    
+    #messages {
+      height: 400px;
+      overflow-y: auto;
+      border: 1px solid #444;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 15px;
+      background-color: #2a2a2a;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    }
+    
+    .message {
+      margin: 10px 0;
+      padding: 8px 12px;
+      border-radius: 6px;
+      background-color: #333;
+      border-left: 3px solid #3498db;
+    }
+    
+    .message .username {
+      font-weight: bold;
+      color: #3498db;
+    }
+    
+    .message .time {
+      color: #999;
+      font-size: 0.8em;
+      margin-left: 5px;
+    }
+    
+    .search-result {
+      background: #3a3a2c;
+      padding: 10px;
+      margin: 8px 0;
+      border-radius: 6px;
+      border-left: 3px solid #f39c12;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .room-tag {
+      background-color: #2c3e50;
+      padding: 3px 6px;
+      border-radius: 4px;
+      font-size: 0.85em;
+    }
+    
+    .goto-room {
+      background-color: #2980b9;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 4px 8px;
+      cursor: pointer;
+      font-size: 0.85em;
+      margin-left: 10px;
+    }
+    
+    .goto-room:hover {
+      background-color: #3498db;
+    }
+    
+    form {
+      display: flex;
+      margin-bottom: 10px;
+    }
+    
+    #messageInput {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid #444;
+      border-radius: 4px 0 0 4px;
+      font-size: 14px;
+      background-color: #2a2a2a;
+      color: #e0e0e0;
+    }
+    
+    button {
+      padding: 10px 15px;
+      background-color: #3498db;
+      color: white;
+      border: none;
+      border-radius: 0 4px 4px 0;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    
+    button:hover {
+      background-color: #2980b9;
+    }
+    
+    .error {
+      color: #e74c3c;
+      font-size: 0.9em;
+      margin-top: 8px;
+      padding: 8px;
+      background-color: rgba(231, 76, 60, 0.2);
+      border-radius: 4px;
+      display: none;
+    }
+    
+    .error.active {
+      display: block;
+    }
+    
+    .cooldown {
+      color: #f39c12;
+      background-color: rgba(243, 156, 18, 0.2);
+    }
+    
+    .search-container {
+      margin-top: 25px;
+      padding: 15px;
+      background-color: #2a2a2a;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    }
+    
+    .search-container h3 {
+      margin-top: 0;
+      color: #3498db;
+    }
+    
+    #searchInput {
+      width: calc(100% - 90px);
+      padding: 10px;
+      border: 1px solid #444;
+      border-radius: 4px;
+      margin-right: 5px;
+      background-color: #2a2a2a;
+      color: #e0e0e0;
+    }
+  </style>
+</head>
+<body>
+  <h1>No 2 Messages Are Alike</h1>
+  
+  <div class="container">
+    <div class="chatroom-list">
+      <h3>Chatrooms</h3>
+      <form id="chatroomForm">
+        <input type="text" id="chatroomInput" placeholder="Create a new chatroom">
+        <button type="submit">Create</button>
+      </form>
+      <div id="chatroomError" class="error"></div>
+      <div id="chatrooms"></div>
+    </div>
+    
+    <div class="main-content">
+      <div class="room-header">
+        <div id="currentRoom">Main Room</div>
+      </div>
+      
+      <div id="messages"></div>
+      
+      <form id="messageForm">
+        <input type="text" id="messageInput" maxlength="200" placeholder="Type a unique message (max 200 chars)">
+        <button type="submit">Send</button>
+      </form>
+      <div id="error" class="error"></div>
+
+      <div class="search-container">
+        <h3>Search Message History</h3>
+        <div>
+          <input type="text" id="searchInput" placeholder="Search for a message">
+          <button onclick="searchMessages()">Search</button>
+        </div>
+        <div id="searchResults"></div>
+      </div>
+    </div>
+  </div>
+  
+  <script type="module" src="app.js"></script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4c6229722a6346bc8eb5cb0e5eae5d41","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body>
+</html>
